@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  DEVELOPER
+  TESTER
+  ADMIN
+}
+
+enum WebsiteStatus {
+  TESTING
+  PUBLISHED
+  REJECTED
+}
+
+enum Severity {
+  SOFT
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  EMERGENCY
+}
+
+enum BugStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESOLVED
+}
+
+enum TransactionType {
+  BUY_CREDITS
+  PURCHASE
+  SALE_COMMISSION
+  TESTER_REWARD
+  UNLOCK
+  CASHBACK
+  PENALTY
+}
+
+model User {
+  id            String        @id @default(cuid())
+  role          UserRole      @default(USER)
+  email         String        @unique
+  password      String
+  approved      Boolean       @default(false)
+  banned        Boolean       @default(false)
+  credits       Int           @default(0)
+  lockedCredits Int           @default(0)
+  rating        Float         @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  websites      Website[]     @relation("DeveloperWebsites")
+  purchases     Purchase[]
+  bugReports    BugReport[]
+  transactions  Transaction[]
+}
+
+model Website {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  techStack   String
+  price       Int
+  previewLink String
+  status      WebsiteStatus @default(TESTING)
+  images      String[]
+  avgRating   Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  developerId String
+  developer   User          @relation("DeveloperWebsites", fields: [developerId], references: [id])
+
+  bugReports  BugReport[]
+  purchases   Purchase[]
+}
+
+model BugReport {
+  id          String     @id @default(cuid())
+  websiteId   String
+  testerId    String
+  severity    Severity
+  description String
+  status      BugStatus  @default(PENDING)
+  adminNote   String?
+  reward      Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  website     Website    @relation(fields: [websiteId], references: [id])
+  tester      User       @relation(fields: [testerId], references: [id])
+}
+
+model Purchase {
+  id         String   @id @default(cuid())
+  userId     String
+  websiteId  String
+  rating     Int?
+  bonusNote  String?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  website    Website  @relation(fields: [websiteId], references: [id])
+
+  @@unique([userId, websiteId])
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  userId    String
+  amount    Int
+  type      TransactionType
+  note      String?
+  createdAt DateTime        @default(now())
+
+  user      User            @relation(fields: [userId], references: [id])
+}
